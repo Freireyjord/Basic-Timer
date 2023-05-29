@@ -7,10 +7,6 @@ int main(void) {
 
     WDTCTL = WDTPW | WDTHOLD;       //WATCHDOG TIMER PARADO
 
-    DCOCTL = 0;                     //
-    BCSCTL1 = CALBC1_1MHZ;          //CONFIGURA CLOCK EM 1 MHZ
-    DCOCTL = CALDCO_1MHZ;
-
     P1DIR |= 0x40;                  //P1.6 IMPLEMENTADO COMO SAÍDA
     P1SEL |= 0x40;                  //CONFIGURANDO P1.6 COMO PERIFÉRICO TA0.1
 
@@ -23,36 +19,34 @@ int main(void) {
 
     TACCR0 = PWM_PERIOD;            //PERÍODO DO PWM
     TACCTL1 = OUTMOD_7;             //MODO DE SAÍDA DO TIMER0_A: RESET/SET
-    TACCR1 = dutyCycle;             //DUTY CYCLE DO PWM EM 10%
-    TACTL = TASSEL_2 + MC_1;        //TASSEL_2 -> CLOCK SOURCE: MCLK    MC_1 ->                                   
+    TACTL = TASSEL_2 + MC_1;        //TASSEL_2 -> CLOCK SOURCE: MCLK    MC_1 ->
 
-    _BIS_SR(GIE + LPM0_bits); // Habilita interrupções globais e coloca o MSP430 em LPM0
+    _BIS_SR(GIE + LPM0_bits);       // Habilita interrupções globais e coloca o MSP430 em LPM0
 
     while(1);
 }
 
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void timer_int(void){
-
     TACCTL1 &= ~CCIFG;
-
 }
 
 #pragma vector = PORT1_VECTOR
 __interrupt void port_int(void){
 
+    if (P1IN & 0x08) {
+        TA0CCR1 = dutyCycle;                    // Atualiza o valor do duty cycle
 
-    TA0CCR1 = dutyCycle; // Atualiza o valor do duty cycle
-    dutyCycle += PWM_PERIOD / 10 * crem; // Incrementa o duty cycle em 10%
+        dutyCycle += PWM_PERIOD / 10 * crem;    // Incrementa o duty cycle em 10%
 
-
-    if (dutyCycle > PWM_PERIOD){
-        dutyCycle = PWM_PERIOD; // Limita o duty cycle máximo
-        crem *= -1;
-    }
-    if (dutyCycle < 1){
-        dutyCycle = 0; // Limita o duty cycle minimo
-        crem *= -1;
+        if (dutyCycle > PWM_PERIOD){
+           dutyCycle = PWM_PERIOD;             // Limita o duty cycle máximo
+            crem *= -1;
+        }
+        if (dutyCycle < 1){
+            dutyCycle = 0;                      // Limita o duty cycle minimo
+            crem *= -1;
+        }
     }
 
     P1IFG &= ~0x08;     //LIMPA FLAG DE INTERRUPÇÃO DO PINO P1.3
